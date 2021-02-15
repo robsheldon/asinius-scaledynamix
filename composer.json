@@ -1,0 +1,18 @@
+{
+    "name": "asinius/scaledynamix",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^7.0",
+        "asinius/asinius": "*",
+        "asinius/http": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Asinius\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
