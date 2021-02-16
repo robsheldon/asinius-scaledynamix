@@ -343,7 +343,7 @@ class ApiClient
         if ( ! static::_is_valid_id($clone_id) ) {
             throw new \RuntimeException("Can't clone this site ID: $clone_id", EINVAL);
         }
-        $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => CMS_CLONE, 'source_id' => $clone_id]);
+        $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => CMS_CLONE, 'clonesourceid' => $clone_id]);
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
             throw new \RuntimeException("Invalid API response when cloning site $clone_id", EUNDEF);
         }
