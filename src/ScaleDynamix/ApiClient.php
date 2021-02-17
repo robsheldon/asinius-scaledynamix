@@ -320,7 +320,10 @@ class ApiClient
         }
         //  Flush the sites cache.
         static::$_cache['sites'] = [];
-        return new Site($response->body['result']);
+        //  ScaleDynamix API returns a JSON object that gets interpreted by
+        //  PHP as a nested array.
+        $new_site_values = $response->body['result'][0];
+        return new Site($new_site_values);
     }
 
 
@@ -349,7 +352,10 @@ class ApiClient
         }
         //  Flush the sites cache.
         static::$_cache['sites'] = [];
-        return new Site($response->body['result']);
+        //  ScaleDynamix API returns a JSON object that gets interpreted by
+        //  PHP as a nested array.
+        $new_site_values = $response->body['result'][0];
+        return new Site($new_site_values);
     }
 
 
