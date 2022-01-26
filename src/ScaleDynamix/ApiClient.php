@@ -300,7 +300,10 @@ class ApiClient
 
     /**
      * Create a new site. This function will not clone an existing site; use
-     * clone_site() for that instead.
+     * clone_site() for that instead. According to ScaleDynamix support on
+     * 2022-01-25, site names must be A-Za-z0-9-; I assume this is meant to
+     * be the standard subdomain-part pattern, so $name is also not allowed
+     * to end in a "-".
      *
      * @param   string      $name
      * @param   mixed       $stack_id
@@ -308,7 +311,7 @@ class ApiClient
      *
      * @throws  RuntimeException
      *
-     * @return  array
+     * @return  Site
      */
     public static function create_new_site ($name, $stack_id, $type)
     {
@@ -316,7 +319,10 @@ class ApiClient
             throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( $type === CMS_CLONE ) {
-            throw new RuntimeException("Use clone_site() to copy a site, not create_new_site()", EINVAL);
+            throw new RuntimeException('Use clone_site() to copy a site, not create_new_site()', EINVAL);
+        }
+        if ( preg_match('/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/', $name) !== 1 ) {
+            throw new RuntimeException('Site names can only contain A-Z, 0-9, and "-", and cannot end with a "-"', EINVAL);
         }
         $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => $type, 'source_id' => 0]);
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
@@ -332,7 +338,7 @@ class ApiClient
 
 
     /**
-     * Clone an existing site.
+     * Clone an existing site. See notes in create_new_site() regarding site names.
      *
      * @param   string      $name
      * @param   mixed       $stack_id
@@ -340,7 +346,7 @@ class ApiClient
      *
      * @throws  RuntimeException
      *
-     * @return  array
+     * @return  Site
      */
     public static function clone_site ($name, $stack_id, $clone_id)
     {
@@ -349,6 +355,9 @@ class ApiClient
         }
         if ( ! static::_is_valid_id($clone_id) ) {
             throw new RuntimeException("Can't clone this site ID: $clone_id", EINVAL);
+        }
+        if ( preg_match('/^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$/', $name) !== 1 ) {
+            throw new RuntimeException('Site names can only contain A-Z, 0-9, and "-", and cannot end with a "-"', EINVAL);
         }
         $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => CMS_CLONE, 'clonesourceid' => $clone_id]);
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
