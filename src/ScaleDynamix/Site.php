@@ -14,7 +14,7 @@
 *                                                                              *
 *   LICENSE                                                                    *
 *                                                                              *
-*   Copyright (c) 2021 Rob Sheldon <rob@rescue.dev>                            *
+*   Copyright (c) 2022 Rob Sheldon <rob@robsheldon.com>                        *
 *                                                                              *
 *   Permission is hereby granted, free of charge, to any person obtaining a    *
 *   copy of this software and associated documentation files (the "Software"), *
@@ -40,6 +40,7 @@
 
 namespace Asinius\ScaleDynamix;
 
+use RuntimeException;
 
 /*******************************************************************************
 *                                                                              *
@@ -77,7 +78,7 @@ class Site
      *
      * @internal
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
@@ -86,11 +87,11 @@ class Site
         $site_id = $this->_values['id'];
         foreach ($domains as $domain) {
             if ( ! array_key_exists('domain', $domain) ) {
-                throw new \RuntimeException("Missing hostname in domain structure for site ID $site_id", EUNDEF);
+                throw new RuntimeException("Missing hostname in domain structure for site ID $site_id", EUNDEF);
             }
             $hostname = $domain['domain'];
             if ( ! array_key_exists('id', $domain) ) {
-                throw new \RuntimeException("Missing id for hostname \"$hostname\" in site ID $site_id", EUNDEF);
+                throw new RuntimeException("Missing id for hostname \"$hostname\" in site ID $site_id", EUNDEF);
             }
             unset($domain['domain']);
             $this->_values['domains'][$hostname] = $domain;
@@ -102,10 +103,6 @@ class Site
      * Create and return a new Scale Dynamix Site object.
      *
      * @param   array       $values
-     *
-     * @throws  \RuntimeException
-     *
-     * @return  \Asinius\ScaleDynamix\Site
      */
     public function __construct ($values)
     {
@@ -122,7 +119,7 @@ class Site
      *
      * @param   string      $property
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  mixed
      */
@@ -130,7 +127,7 @@ class Site
     {
         $site_id = $this->_values['id'];
         if ( $this->_deleted ) {
-            throw new \RuntimeException("Site ID $site_id can not be accessed because it has been deleted from your account", EUNDEF);
+            throw new RuntimeException("Site ID $site_id can not be accessed because it has been deleted from your account", EUNDEF);
         } 
         if ( array_key_exists($property, $this->_values) ) {
             return $this->_values[$property];
@@ -139,7 +136,7 @@ class Site
             case 'metadata':
                 $metadata = ApiClient::get_site_metadata($this->_values['id']);
                 if ( ! is_array($metadata) || ! isset($metadata[0]) || count($metadata) !== 1 ) {
-                    throw new \RuntimeException("The API returned an unexpected response when retrieving metadata for site ID $site_id", EUNDEF);
+                    throw new RuntimeException("The API returned an unexpected response when retrieving metadata for site ID $site_id", EUNDEF);
                 }
                 $metadata = reset($metadata);
                 $tags = $metadata['tags'];
@@ -157,7 +154,7 @@ class Site
                 }
                 return $this->_values[$property];
             default:
-                throw new \RuntimeException("Property does not exist: $property", EINVAL);
+                throw new RuntimeException("Property does not exist: $property", EINVAL);
         }
     }
 
@@ -168,13 +165,13 @@ class Site
      * @param   string      $property
      * @param   mixed       $value
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function __set ($property, $value)
     {
-        throw new \RuntimeException(__CLASS__ . ' is read-only', EACCESS);
+        throw new RuntimeException(__CLASS__ . ' is read-only', EACCESS);
     }
 
 
@@ -184,14 +181,14 @@ class Site
      * @param   string      $name
      * @param   string|int  $to_stack
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
-     * @return  \Asinius\ScaleDynamix\Site
+     * @return  Site
      */
     public function clone ($name, $to_stack)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         return ApiClient::clone_site($name, $to_stack, $this->_values['id']);
     }
@@ -202,14 +199,14 @@ class Site
      *
      * @param   string      $tag
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function add_tag ($tag)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         $this->_import_tags(ApiClient::add_tag($this->_values['id'], $tag));
     }
@@ -220,14 +217,14 @@ class Site
      *
      * @param   string      $tag
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function delete_tag ($tag)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         //  Ensure that the list of tags for this site is already cached.
         $tags = $this->__get('tags');
@@ -245,14 +242,14 @@ class Site
      *
      * @param   string      $hostname
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function add_domain ($hostname)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         $domain_id = ApiClient::add_domain($this->_values['id'], $hostname);
         $this->_import_domains([['domain' => $hostname, 'id' => $domain_id]]);
@@ -264,26 +261,26 @@ class Site
      *
      * @param   string      $hostname
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function set_primary_domain ($hostname)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         //  Ensure that the list of domains for this site is already cached.
         $domains = $this->__get('domains');
         if ( ! array_key_exists($hostname, $domains) ) {
-            throw new \RuntimeException("Can't make \"$hostname\" the primary domain for site ID " . $this->_values['id'] . " because this domain hasn't been added to this site", EINVAL);
+            throw new RuntimeException("Can't make \"$hostname\" the primary domain for site ID " . $this->_values['id'] . " because this domain hasn't been added to this site", EINVAL);
         }
         if ( isset($this->_values['domains'][$hostname]['primary']) && $this->_values['domains'][$hostname]['primary'] == true ) {
             return;
         }
         $success = ApiClient::set_primary_domain($this->_values['id'], $domains[$hostname]['id']);
         if ( ! $success ) {
-            throw new \RuntimeException("Scale Dynamix failed to set \"$hostname\" as the primary domain for site ID " . $this->_values['id'], EUNDEF);
+            throw new RuntimeException("Scale Dynamix failed to set \"$hostname\" as the primary domain for site ID " . $this->_values['id'], EUNDEF);
         }
         //  Unset the previous primary domain.
         foreach ($this->_values['domains'] as $hostname => $values) {
@@ -301,14 +298,14 @@ class Site
      *
      * @param   string      $hostname
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function delete_domain ($hostname)
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         //  Ensure that the list of domains for this site is already cached.
         $domains = $this->__get('domains');
@@ -334,14 +331,14 @@ class Site
     /**
      * Delete this Site from the account.
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
     public function delete ()
     {
         if ( $this->_deleted ) {
-            throw new \RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
+            throw new RuntimeException('Site ID ' . $this->_values['id'] . ' can not be accessed because it has been deleted from your account', EUNDEF);
         }
         $this->_deleted = ApiClient::delete_site($this->_values['id']);
     }

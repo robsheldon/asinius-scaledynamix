@@ -8,7 +8,7 @@
 *                                                                              *
 *   LICENSE                                                                    *
 *                                                                              *
-*   Copyright (c) 2021 Rob Sheldon <rob@rescue.dev>                            *
+*   Copyright (c) 2022 Rob Sheldon <rob@robsheldon.com>                        *
 *                                                                              *
 *   Permission is hereby granted, free of charge, to any person obtaining a    *
 *   copy of this software and associated documentation files (the "Software"), *
@@ -33,6 +33,8 @@
 *******************************************************************************/
 
 namespace Asinius\ScaleDynamix;
+
+use Exception, RuntimeException;
 
 
 /*******************************************************************************
@@ -70,9 +72,10 @@ class ApiClient
      * Execute an API request and handle some common errors.
      *
      * @param   string      $endpoint
-     * @param   string      $type
+     * @param   string      $method
+     * @param   ?array      $parameters
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  mixed
      */
@@ -87,18 +90,17 @@ class ApiClient
             $response = static::$_http_client->post($url, $parameters, ['Key' => static::$_api_key]);
         }
         else {
-            throw new \RuntimeException("Unsupported API request type: $method", EUNDEF);
+            throw new RuntimeException("Unsupported API request type: $method", EUNDEF);
         }
         if ( $response->code === 401 ) {
-            throw new \RuntimeException("You are not authorized to $method $url", 401);
+            throw new RuntimeException("You are not authorized to $method $url", 401);
         }
         $response_body = $response->body;
         if ( ! isset($response_body['success']) ) {
-            var_dump($response_body);
-            throw new \RuntimeException("Unexpected API response to $method $url", EUNDEF);
+            throw new RuntimeException("Unexpected API response to $method $url", EUNDEF);
         }
         if ( $response_body['success'] !== true ) {
-            throw new \RuntimeException("API request failed for $method $url");
+            throw new RuntimeException("API request failed for $method $url; received [" . print_r($response_body['true'], true) . "] for 'success' flag");
         }
         return $response;
     }
@@ -133,7 +135,7 @@ class ApiClient
      *
      * @param   array       $login_parameters
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
@@ -144,7 +146,7 @@ class ApiClient
             return;
         }
         if ( ! array_key_exists('api_key', $login_parameters) ) {
-            throw new \RuntimeException('The Scale Dynamix API requires an API key. This must be passed as an "api_key" value to login()');
+            throw new RuntimeException('The Scale Dynamix API requires an API key. This must be passed as an "api_key" value to login()');
         }
         static::$_api_key = $login_parameters['api_key'];
         static::$_http_client = new \Asinius\HTTP\Client();
@@ -153,14 +155,14 @@ class ApiClient
             //  The API doesn't have an official "login" endpoint; requesting
             //  the list of available providers should be a low-overhead way
             //  of verifiying the API key.
-            $response = static::_exec('providers');
+            static::_exec('providers');
         }
-        catch (\Exception $e) {
+        catch (Exception $e) {
             static::$_http_client = NULL;
             if ( $e->getCode() === 401 ) {
-                throw new \RuntimeException('API login failed');
+                throw new RuntimeException('API login failed');
             }
-            throw new \RuntimeException($e->getMessage(), $e->getCode());
+            throw new RuntimeException($e->getMessage(), $e->getCode());
         }
     }
 
@@ -202,14 +204,14 @@ class ApiClient
     /**
      * Return a list of the cloud platform providers enabled for this account.
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function get_providers ()
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         $response = static::_exec('providers');
         return ($response->body)['result']['providers'];
@@ -220,7 +222,7 @@ class ApiClient
      * Return a list of the "stacks" (cloud platform instances) available for
      * this account.
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
@@ -230,14 +232,16 @@ class ApiClient
             return static::$_cache['stacks'];
         }
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         $response = static::_exec('stacks');
         if ( ! isset($response->body['result']['stacks']) || ! is_array($response->body['result']['stacks']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving stacks", EUNDEF);
+            throw new RuntimeException('Invalid API response when retrieving stacks', EUNDEF);
         }
         foreach ($response->body['result']['stacks'] as $stackinfo) {
             //  Create a new stack.
+            //  TODO
+            throw new RuntimeException('This API client does not yet support stack creation', ENOSYS);
         }
         return static::$_cache['stacks'];
     }
@@ -246,7 +250,7 @@ class ApiClient
     /**
      * Return a list of the sites in this account.
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
@@ -256,11 +260,11 @@ class ApiClient
             return static::$_cache['sites'];
         }
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         $response = static::_exec('sites');
         if ( ! isset($response->body['result']['sites']) || ! is_array($response->body['result']['sites']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving sites", EUNDEF);
+            throw new RuntimeException("Invalid API response when retrieving sites", EUNDEF);
         }
         foreach ($response->body['result']['sites'] as $siteinfo) {
             static::$_cache['sites'][] = new Site($siteinfo);
@@ -274,21 +278,21 @@ class ApiClient
      *
      * @param   mixed       $site_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function get_site_metadata ($site_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't retrieve metadata for this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't retrieve metadata for this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("sites/$site_id");
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving metadata for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when retrieving metadata for site $site_id", EUNDEF);
         }
         return $response->body['result'];
     }
@@ -302,21 +306,21 @@ class ApiClient
      * @param   mixed       $stack_id
      * @param   int         $type
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function create_new_site ($name, $stack_id, $type)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( $type === CMS_CLONE ) {
-            throw new \RuntimeException("Use clone_site() to copy a site, not create_new_site()", EINVAL);
+            throw new RuntimeException("Use clone_site() to copy a site, not create_new_site()", EINVAL);
         }
         $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => $type, 'source_id' => 0]);
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
-            throw new \RuntimeException("Invalid API response when creating \"$name\"", EUNDEF);
+            throw new RuntimeException("Invalid API response when creating \"$name\"", EUNDEF);
         }
         //  Flush the sites cache.
         static::$_cache['sites'] = [];
@@ -334,21 +338,21 @@ class ApiClient
      * @param   mixed       $stack_id
      * @param   mixed       $clone_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function clone_site ($name, $stack_id, $clone_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($clone_id) ) {
-            throw new \RuntimeException("Can't clone this site ID: $clone_id", EINVAL);
+            throw new RuntimeException("Can't clone this site ID: $clone_id", EINVAL);
         }
         $response = static::_exec('sites', 'POST', ['name' => $name, 'stack_id' => $stack_id, 'type' => CMS_CLONE, 'clonesourceid' => $clone_id]);
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
-            throw new \RuntimeException("Invalid API response when cloning site $clone_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when cloning site $clone_id", EUNDEF);
         }
         //  Flush the sites cache.
         static::$_cache['sites'] = [];
@@ -366,21 +370,21 @@ class ApiClient
      *
      * @param   mixed       $site_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function get_tags ($site_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't delete this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't delete this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("tags/$site_id");
         if ( ! isset($response->body['result']['tags']) || ! is_array($response->body['result']['tags']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
         }
         return $response->body['result']['tags'];
     }
@@ -395,21 +399,21 @@ class ApiClient
      * @param   mixed       $site_id
      * @param   string      $tag
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function add_tag ($site_id, $tag)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't add a tag to this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't add a tag to this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("tags/$site_id", 'POST', ['tag' => $tag]);
         if ( ! isset($response->body['result']['tags']) || ! is_array($response->body['result']['tags']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
         }
         return $response->body['result']['tags'];
     }
@@ -423,21 +427,21 @@ class ApiClient
      * @param   mixed       $site_id
      * @param   string      $tag_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  boolean
      */
     public static function delete_tag ($site_id, $tag_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't add a tag to this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't add a tag to this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("tags/$site_id", 'DELETE', ['tag_id' => $tag_id]);
         if ( ! isset($response->body['result']['tags']) || ! is_array($response->body['result']['tags']) ) {
-            throw new \RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when retrieving tags for site $site_id", EUNDEF);
         }
         return $response['success'];
     }
@@ -450,24 +454,24 @@ class ApiClient
      * @param   mixed       $site_id
      * @param   string      $domain
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  int
      */
     public static function add_domain ($site_id, $domain)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't add a domain to this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't add a domain to this site ID: $site_id", EINVAL);
         }
         if ( preg_match('/^[a-zA-Z0-9_.-]+$/', $domain) !== 1 ) {
-            throw new \RuntimeException("Can't add this domain: $domain", EINVAL);
+            throw new RuntimeException("Can't add this domain: $domain", EINVAL);
         }
         $response = static::_exec("domains/$site_id", 'POST', ['domain' => $domain]);
         if ( ! isset($response->body['result']['id']) ) {
-            throw new \RuntimeException("Invalid API response when adding the domain \"$domain\" for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when adding the domain \"$domain\" for site $site_id", EUNDEF);
         }
         return $response->body['result']['id'];
     }
@@ -483,21 +487,21 @@ class ApiClient
      *
      * @param   mixed       $site_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  array
      */
     public static function get_domains ($site_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't get a list of domains for this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't get a list of domains for this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("domains/$site_id");
         if ( ! isset($response->body['result']['domains']) || ! is_array($response->body['result']['domains']) ) {
-            throw new \RuntimeException("Invalid API response when getting domains for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when getting domains for site $site_id", EUNDEF);
         }
         return $response->body['result']['domains'];
     }
@@ -509,24 +513,24 @@ class ApiClient
      * @param   mixed       $site_id
      * @param   mixed       $domain_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  boolean
      */
     public static function set_primary_domain ($site_id, $domain_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't set the primary domain for this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't set the primary domain for this site ID: $site_id", EINVAL);
         }
         if ( ! static::_is_valid_id($domain_id) ) {
-            throw new \RuntimeException("This does not look like a valid domain ID: $domain_id", EINVAL);
+            throw new RuntimeException("This does not look like a valid domain ID: $domain_id", EINVAL);
         }
         $response = static::_exec("domains/$site_id", 'PUT', ['domain_id' => $domain_id]);
         if ( ! isset($response->body['result']['id']) ) {
-            throw new \RuntimeException("Invalid API response when setting the primary domain for site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when setting the primary domain for site $site_id", EUNDEF);
         }
         return $response->body['result']['success'];
     }
@@ -539,24 +543,24 @@ class ApiClient
      * @param   mixed       $site_id
      * @param   mixed       $domain_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  boolean
      */
     public static function delete_domain ($site_id, $domain_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("This does not look like a valid site ID: $site_id", EINVAL);
+            throw new RuntimeException("This does not look like a valid site ID: $site_id", EINVAL);
         }
         if ( ! static::_is_valid_id($domain_id) ) {
-            throw new \RuntimeException("This does not look like a valid domain ID: $domain_id", EINVAL);
+            throw new RuntimeException("This does not look like a valid domain ID: $domain_id", EINVAL);
         }
         $response = static::_exec("domains/$site_id", 'DELETE', ['domain_id' => $domain_id]);
         if ( ! isset($response->body['result']['id']) ) {
-            throw new \RuntimeException("Invalid API response when deleting a domain from site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when deleting a domain from site $site_id", EUNDEF);
         }
         return $response->body['result']['success'];
     }
@@ -567,21 +571,21 @@ class ApiClient
      *
      * @param   mixed       $site_id
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  boolean
      */
     public static function delete_site ($site_id)
     {
         if ( static::$_http_client === NULL ) {
-            throw new \RuntimeException('API not available; you must ::login() first', EACCESS);
+            throw new RuntimeException('API not available; you must ::login() first', EACCESS);
         }
         if ( ! static::_is_valid_id($site_id) ) {
-            throw new \RuntimeException("Can't delete this site ID: $site_id", EINVAL);
+            throw new RuntimeException("Can't delete this site ID: $site_id", EINVAL);
         }
         $response = static::_exec("sites/$site_id", 'DELETE');
         if ( ! isset($response->body['result']) || ! is_array($response->body['result']) ) {
-            throw new \RuntimeException("Invalid API response when deleting site $site_id", EUNDEF);
+            throw new RuntimeException("Invalid API response when deleting site $site_id", EUNDEF);
         }
         //  Flush the sites cache.
         static::$_cache['sites'] = [];
@@ -594,7 +598,7 @@ class ApiClient
      * http client object and cleaning up caches. Further calls to the API
      * will fail unless login() is called again with the appropriate credentials.
      *
-     * @throws  \RuntimeException
+     * @throws  RuntimeException
      *
      * @return  void
      */
